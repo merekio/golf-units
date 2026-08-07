@@ -183,6 +183,16 @@ export function calculateRoundUnits(
       if (!info) return;
       const { events } = info;
 
+      // Banderas: quien queda en regulación 1 gana 1 unidad de cada rival.
+      if (events.regulation === 1) {
+        holeUnitsByEvent[p.playerId]["banderas"] = (holeUnitsByEvent[p.playerId]["banderas"] ?? 0) + (numPlayers - 1);
+        players.forEach((other) => {
+          if (other.playerId === p.playerId) return;
+          holeUnitsByEvent[other.playerId]["pierde banderas"] =
+            (holeUnitsByEvent[other.playerId]["pierde banderas"] ?? 0) - 1;
+        });
+      }
+
       if (events.sandPar) {
         holeUnitsByEvent[p.playerId]["sandPar"] = (holeUnitsByEvent[p.playerId]["sandPar"] ?? 0) + (numPlayers - 1);
         players.forEach((other) => {

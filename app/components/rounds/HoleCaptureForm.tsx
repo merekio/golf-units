@@ -54,6 +54,8 @@ function formatUnitConcept(concept: string) {
     "pierde birdie": "Birdie rival",
     "águila": "Águila",
     "pierde águila": "Águila rival",
+    "banderas": "Banderas",
+    "pierde banderas": "Banderas rival",
     "triputt": "Triputt",
     "gana triputt": "Triputt rival",
     "español": "Español",
