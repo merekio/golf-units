@@ -21,6 +21,7 @@ interface HoleCaptureFormProps {
 const defaultEvents: HoleEventFlags = {
   eagle: false,
   birdie: false,
+  banderas: 0,
   regulation: 0,
   hoyo: 0,
   sandPar: false,
@@ -313,9 +314,12 @@ export default function HoleCaptureForm({
       }
     }
 
-    // Validación 4: La regulación debe ser una posición única de 1 a N jugadores en cada hoyo
+    // Validación 4: Si se captura regulación en un hoyo, debe estar completa y sin repetir.
     for (let h = 1; h <= holesToPlay; h++) {
       const ranks = players.map((p) => holeData[h][p.id]?.events.regulation ?? 0);
+      const hasAnyRank = ranks.some((r) => r > 0);
+      if (!hasAnyRank) continue;
+
       const uniqueRanks = new Set(ranks.filter((r) => r > 0));
       if (uniqueRanks.size !== players.length || ranks.some((r) => r < 1 || r > players.length)) {
         setError(
@@ -481,6 +485,28 @@ export default function HoleCaptureForm({
                         </option>
                       ))}
                     </select>
+                  </label>
+
+                  <label className="mb-4 block">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                      Banderas capturadas
+                    </span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={shot.events.banderas === 0 ? "" : shot.events.banderas}
+                      onChange={(e) =>
+                        togglePlayerEvent(
+                          currentHole,
+                          player.id,
+                          "banderas",
+                          e.target.value === "" ? 0 : Number(e.target.value)
+                        )
+                      }
+                      className="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-400 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      placeholder="0"
+                    />
                   </label>
 
                   <fieldset className="space-y-2 border-t border-slate-300 pt-3 dark:border-slate-700">

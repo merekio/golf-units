@@ -136,6 +136,7 @@ export async function getUserDashboardStats(
             events: applyAutomaticHoleEvents(par, hs.strokes, hs.putts, {
               eagle: hs.eagle ?? false,
               birdie: hs.birdie ?? false,
+              banderas: hs.banderas_count ?? 0,
               regulation: hs.regulation_rank ?? 0,
               hoyo: 0,
               sandPar: hs.sand_par ?? false,

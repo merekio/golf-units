@@ -10,6 +10,33 @@ const currency = new Intl.NumberFormat("es-MX", {
   maximumFractionDigits: 0,
 });
 
+function formatUnitConcept(concept: string) {
+  const labels: Record<string, string> = {
+    "birdie": "Birdie",
+    "pierde birdie": "Birdie rival",
+    "águila": "Águila",
+    "pierde águila": "Águila rival",
+    "banderas": "Banderas",
+    "pierde banderas": "Banderas rival",
+    "triputt": "Triputt",
+    "gana triputt": "Triputt rival",
+    "español": "Español",
+    "gana español": "Español rival",
+    "sandPar": "Sand/Par",
+    "pierde sandPar": "Sand/Par rival",
+    "holeOut": "Hole Out",
+    "pierde holeOut": "Hole Out rival",
+    "salidaGreen": "Salida de Green",
+    "gana salidaGreen": "Salida de Green rival",
+    "pinkis": "Pinkis",
+    "gana pinkis": "Pinkis rival",
+    "regulación": "Unidades por regulación",
+    "hoyo": "Hoyo ganado o perdido",
+  };
+
+  return labels[concept] ?? concept;
+}
+
 export default async function RoundSummaryPage({
   params,
 }: {
@@ -63,6 +90,7 @@ export default async function RoundSummaryPage({
       events: applyAutomaticHoleEvents(par, hs.strokes, hs.putts, {
         eagle: hs.eagle ?? false,
         birdie: hs.birdie ?? false,
+        banderas: hs.banderas_count ?? 0,
         regulation: hs.regulation_rank ?? 0,
         hoyo: 0,
         sandPar: hs.sand_par ?? false,
@@ -324,7 +352,7 @@ export default async function RoundSummaryPage({
                         <div className="ml-4 text-xs text-slate-500 dark:text-slate-500">
                           {Object.entries(hole.unitsByEvent).map(([event, units]) => (
                             <div key={event}>
-                              {event}: {units > 0 ? "+" : ""}
+                              {formatUnitConcept(event)}: {units > 0 ? "+" : ""}
                               {units}
                             </div>
                           ))}

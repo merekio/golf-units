@@ -6,6 +6,7 @@ import { applyAutomaticHoleEvents } from "@/lib/utils/holeEvents";
 export type HoleEventFlags = {
   eagle: boolean;
   birdie: boolean;
+  banderas: number;
   regulation: number;
   hoyo: number;
   sandPar: boolean;
@@ -93,6 +94,7 @@ export type RoundDetailData = {
     guest_player_id: string | null;
     strokes: number;
     putts: number;
+    banderas_count: number | null;
     regulation_rank: number | null;
     birdie: boolean | null;
     eagle: boolean | null;
@@ -128,7 +130,7 @@ export async function getRoundDetail(roundId: string): Promise<RoundDetailData> 
 
   const [roundResult, holeScoresResult, roundPlayersResult] = await Promise.all([
     supabase.from("rounds").select("id, course_id, round_date, holes_to_play, unit_value").eq("id", roundId).single(),
-    supabase.from("hole_scores").select("hole_number, player_id, guest_player_id, strokes, putts, regulation_rank, birdie, eagle, sand_par, hole_out, pinkis, salida_green, spanish").eq("round_id", roundId),
+    supabase.from("hole_scores").select("hole_number, player_id, guest_player_id, strokes, putts, banderas_count, regulation_rank, birdie, eagle, sand_par, hole_out, pinkis, salida_green, spanish").eq("round_id", roundId),
     supabase.from("round_players").select("player_id, guest_player_id, playing_hcp, players(alias), guest_players(name)").eq("round_id", roundId),
   ]);
 
@@ -239,6 +241,7 @@ export async function saveRoundHoles(
         guest_player_id: isGuest ? playerId : null,
         strokes: shotData.strokes,
         putts: shotData.putts,
+        banderas_count: normalizedEvents.banderas,
         regulation_rank: normalizedEvents.regulation || null,
         hit_green_regulation: normalizedEvents.regulation > 0,
         birdie: normalizedEvents.birdie,

@@ -115,6 +115,36 @@ export function calculateRoundUnits(
 
     // --- Zero-sum events (transfers between players) ---
 
+    // Banderas: cada jugador captura una cantidad manual por hoyo.
+    // Se compara por pares; quien tenga mas banderas en el hoyo gana la diferencia.
+    for (let i = 0; i < players.length; i++) {
+      for (let j = i + 1; j < players.length; j++) {
+        const pA = players[i];
+        const pB = players[j];
+        const infoA = holeInfo[pA.playerId];
+        const infoB = holeInfo[pB.playerId];
+        if (!infoA || !infoB) continue;
+
+        const banderasA = Math.max(0, infoA.events.banderas ?? 0);
+        const banderasB = Math.max(0, infoB.events.banderas ?? 0);
+        if (banderasA === banderasB) continue;
+
+        if (banderasA > banderasB) {
+          const diff = banderasA - banderasB;
+          holeUnitsByEvent[pA.playerId]["banderas"] =
+            (holeUnitsByEvent[pA.playerId]["banderas"] ?? 0) + diff;
+          holeUnitsByEvent[pB.playerId]["pierde banderas"] =
+            (holeUnitsByEvent[pB.playerId]["pierde banderas"] ?? 0) - diff;
+        } else {
+          const diff = banderasB - banderasA;
+          holeUnitsByEvent[pB.playerId]["banderas"] =
+            (holeUnitsByEvent[pB.playerId]["banderas"] ?? 0) + diff;
+          holeUnitsByEvent[pA.playerId]["pierde banderas"] =
+            (holeUnitsByEvent[pA.playerId]["pierde banderas"] ?? 0) - diff;
+        }
+      }
+    }
+
     // Birdie: el que pega birdie gana 1 unidad de cada otro jugador
     players.forEach((p) => {
       const info = holeInfo[p.playerId];
@@ -182,16 +212,6 @@ export function calculateRoundUnits(
       const info = holeInfo[p.playerId];
       if (!info) return;
       const { events } = info;
-
-      // Banderas: quien queda en regulación 1 gana 1 unidad de cada rival.
-      if (events.regulation === 1) {
-        holeUnitsByEvent[p.playerId]["banderas"] = (holeUnitsByEvent[p.playerId]["banderas"] ?? 0) + (numPlayers - 1);
-        players.forEach((other) => {
-          if (other.playerId === p.playerId) return;
-          holeUnitsByEvent[other.playerId]["pierde banderas"] =
-            (holeUnitsByEvent[other.playerId]["pierde banderas"] ?? 0) - 1;
-        });
-      }
 
       if (events.sandPar) {
         holeUnitsByEvent[p.playerId]["sandPar"] = (holeUnitsByEvent[p.playerId]["sandPar"] ?? 0) + (numPlayers - 1);
