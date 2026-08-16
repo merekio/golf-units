@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { saveRoundHoles, HoleShotData, HoleEventFlags } from "@/lib/actions/rounds";
 import { getCourses, CourseRecord } from "@/lib/actions/courses";
 import { applyAutomaticHoleEvents, AUTO_EVENT_KEYS } from "@/lib/utils/holeEvents";
-import { calculateRoundUnits, CourseHole, PlayerRoundData } from "@/lib/utils/unitCalculations";
+import { calculateRoundUnits, getPlaySequence, CourseHole, PlayerRoundData } from "@/lib/utils/unitCalculations";
 
 type Course = CourseRecord;
 type Player = { id: string; alias: string; isGuest: boolean; playingHcp: number };
@@ -14,6 +14,7 @@ interface HoleCaptureFormProps {
   roundId: string;
   courseId: string;
   holesToPlay: number;
+  startingHole: number;
   players: Player[];
   unitValue: number;
 }
@@ -80,15 +81,22 @@ export default function HoleCaptureForm({
   roundId,
   courseId,
   holesToPlay,
+  startingHole,
   players,
 }: HoleCaptureFormProps) {
   const router = useRouter();
+  const playSequence = useMemo(
+    () => getPlaySequence(startingHole, holesToPlay),
+    [startingHole, holesToPlay]
+  );
   const [course, setCourse] = useState<Course | null>(null);
-  const [currentHole, setCurrentHole] = useState(1);
+  const [currentHoleIndex, setCurrentHoleIndex] = useState(0);
   const [holeData, setHoleData] = useState<Record<number, Record<string, HoleShotData>>>({});
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const currentHole = playSequence[currentHoleIndex] ?? playSequence[0] ?? 1;
 
   useEffect(() => {
     async function loadCourse() {
@@ -98,7 +106,7 @@ export default function HoleCaptureForm({
         setCourse(found || null);
 
         const initialData: Record<number, Record<string, HoleShotData>> = {};
-        for (let h = 1; h <= holesToPlay; h++) {
+        for (const h of playSequence) {
           initialData[h] = {};
           players.forEach((p) => {
             initialData[h][p.id] = { ...defaultShot };
@@ -114,7 +122,7 @@ export default function HoleCaptureForm({
     }
 
     loadCourse();
-  }, [courseId, holesToPlay, players]);
+  }, [courseId, playSequence, players]);
 
   const updatePlayerShot = (
     holeNum: number,
@@ -197,7 +205,7 @@ export default function HoleCaptureForm({
 
     const playerRoundData: PlayerRoundData[] = players.map((player) => {
       const holes: Record<number, HoleShotData> = {};
-      for (let holeNum = 1; holeNum <= holesToPlay; holeNum++) {
+      for (const holeNum of playSequence) {
         const shot = holeData[holeNum]?.[player.id];
         if (shot) {
           holes[holeNum] = withAutomaticEvents(shot, getHolePar(holeNum));
@@ -211,13 +219,13 @@ export default function HoleCaptureForm({
       };
     });
 
-    return calculateRoundUnits(playerRoundData, mappedCourseHoles, holesToPlay);
-  }, [course?.holes, holeData, holesToPlay, players]);
+    return calculateRoundUnits(playerRoundData, mappedCourseHoles, holesToPlay, startingHole);
+  }, [course?.holes, holeData, holesToPlay, playSequence, players, startingHole]);
 
   const capturedHoles = useMemo(() => {
     const captured: number[] = [];
 
-    for (let holeNum = 1; holeNum <= holesToPlay; holeNum++) {
+    for (const holeNum of playSequence) {
       const isCaptured = players.every((player) => {
         const shot = holeData[holeNum]?.[player.id];
         return Boolean(shot && shot.strokes > 0);
@@ -229,7 +237,7 @@ export default function HoleCaptureForm({
     }
 
     return captured;
-  }, [holeData, holesToPlay, players]);
+  }, [holeData, playSequence, players]);
 
   const capturedHoleUnitResults = useMemo(() => {
     if (!course?.holes?.length) {
@@ -245,7 +253,7 @@ export default function HoleCaptureForm({
     const capturedHoleSet = new Set(capturedHoles);
     const playerRoundData: PlayerRoundData[] = players.map((player) => {
       const holes: Record<number, HoleShotData> = {};
-      for (let holeNum = 1; holeNum <= holesToPlay; holeNum++) {
+      for (const holeNum of playSequence) {
         if (!capturedHoleSet.has(holeNum)) continue;
 
         const shot = holeData[holeNum]?.[player.id];
@@ -261,8 +269,8 @@ export default function HoleCaptureForm({
       };
     });
 
-    return calculateRoundUnits(playerRoundData, mappedCourseHoles, holesToPlay);
-  }, [capturedHoles, course?.holes, holeData, holesToPlay, players]);
+    return calculateRoundUnits(playerRoundData, mappedCourseHoles, holesToPlay, startingHole);
+  }, [capturedHoles, course?.holes, holeData, holesToPlay, playSequence, players, startingHole]);
 
   const unitTotals = useMemo(() => {
     const won = capturedHoleUnitResults.reduce((sum, result) => sum + Math.max(0, result.units), 0);
@@ -273,6 +281,17 @@ export default function HoleCaptureForm({
       balance: won - lost,
     };
   }, [capturedHoleUnitResults]);
+
+  const playerBalances = useMemo(() => {
+    return players.map((player) => {
+      const result = capturedHoleUnitResults.find((r) => r.playerId === player.id);
+      return {
+        playerId: player.id,
+        alias: player.alias,
+        units: result?.units ?? 0,
+      };
+    });
+  }, [capturedHoleUnitResults, players]);
 
   const currentHoleBreakdownByPlayer = useMemo(() => {
     return Object.fromEntries(
@@ -287,12 +306,12 @@ export default function HoleCaptureForm({
     setError("");
 
     // Validación 1: Verificar que todos los hoyos tienen datos
-    for (let h = 1; h <= holesToPlay; h++) {
+    for (const h of playSequence) {
       if (!holeData[h]) {
         setError(`No hay datos para el hoyo ${h}.`);
         return;
       }
-      
+
       // Validación 2: Verificar que todos los jugadores tienen datos en cada hoyo
       for (const player of players) {
         const shot = holeData[h][player.id];
@@ -315,7 +334,7 @@ export default function HoleCaptureForm({
     }
 
     // Validación 4: Si se captura regulación en un hoyo, debe estar completa y sin repetir.
-    for (let h = 1; h <= holesToPlay; h++) {
+    for (const h of playSequence) {
       const ranks = players.map((p) => holeData[h][p.id]?.events.regulation ?? 0);
       const hasAnyRank = ranks.some((r) => r > 0);
       if (!hasAnyRank) continue;
@@ -387,10 +406,51 @@ export default function HoleCaptureForm({
           </div>
         ) : null}
 
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+          <h2 className="mb-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Saldo por jugador
+          </h2>
+          <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
+            Unidades acumuladas de los hoyos capturados.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {playerBalances.map((balance) => (
+              <div
+                key={balance.playerId}
+                className={`rounded-2xl border p-4 ${
+                  balance.units > 0
+                    ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20"
+                    : balance.units < 0
+                      ? "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20"
+                      : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950/50"
+                }`}
+              >
+                <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {balance.alias}
+                </p>
+                <p
+                  className={`text-2xl font-bold ${
+                    balance.units > 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : balance.units < 0
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-slate-900 dark:text-slate-100"
+                  }`}
+                >
+                  {balance.units > 0 ? "+" : ""}
+                  {balance.units}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
           <div className="mb-6 flex flex-col items-center justify-between gap-4 sm:flex-row">
             <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Hoyo actual</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Hoyo actual ({currentHoleIndex + 1} de {holesToPlay})
+              </p>
               <h2 className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
                 {currentHole}
               </h2>
@@ -413,15 +473,31 @@ export default function HoleCaptureForm({
               const negativeEntries = conceptEntries.filter(([, units]) => units < 0);
               const wonUnits = positiveEntries.reduce((sum, [, units]) => sum + units, 0);
               const lostUnits = negativeEntries.reduce((sum, [, units]) => sum + Math.abs(units), 0);
+              const playerBalance =
+                playerBalances.find((b) => b.playerId === player.id)?.units ?? 0;
 
               return (
                 <div
                   key={player.id}
                   className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/50"
                 >
-                  <h3 className="mb-4 font-semibold text-slate-900 dark:text-slate-100">
-                    {player.alias}
-                  </h3>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                      {player.alias}
+                    </h3>
+                    <span
+                      className={`rounded-full px-3 py-1 text-sm font-semibold ${
+                        playerBalance > 0
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                          : playerBalance < 0
+                            ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                            : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      }`}
+                    >
+                      Saldo: {playerBalance > 0 ? "+" : ""}
+                      {playerBalance}
+                    </span>
+                  </div>
 
                   <div className="mb-4 grid gap-3 sm:grid-cols-2">
                     <label className="block">
@@ -642,8 +718,8 @@ export default function HoleCaptureForm({
           <div className="mt-6 flex gap-3">
             <button
               type="button"
-              disabled={currentHole === 1}
-              onClick={() => setCurrentHole(Math.max(1, currentHole - 1))}
+              disabled={currentHoleIndex === 0}
+              onClick={() => setCurrentHoleIndex(Math.max(0, currentHoleIndex - 1))}
               className="inline-flex rounded-full bg-slate-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               ← Anterior
@@ -651,10 +727,10 @@ export default function HoleCaptureForm({
 
             <div className="flex-1" />
 
-            {currentHole < holesToPlay ? (
+            {currentHoleIndex < playSequence.length - 1 ? (
               <button
                 type="button"
-                onClick={() => setCurrentHole(currentHole + 1)}
+                onClick={() => setCurrentHoleIndex(currentHoleIndex + 1)}
                 className="inline-flex rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
               >
                 Siguiente →

@@ -58,7 +58,7 @@ export async function getUserDashboardStats(
       getCourses(),
       supabase
         .from("rounds")
-        .select("id, course_id, round_date, holes_to_play")
+        .select("id, course_id, round_date, holes_to_play, starting_hole")
         .eq("owner_id", userId)
         .order("round_date", { ascending: false }),
     ]);
@@ -160,7 +160,8 @@ export async function getUserDashboardStats(
         const calculatedResults = calculateRoundUnits(
           Object.values(playerDataMap),
           courseHoles,
-          round.holes_to_play
+          round.holes_to_play,
+          round.starting_hole ?? 1
         );
 
         const topResult = calculatedResults.reduce((best, current) => {

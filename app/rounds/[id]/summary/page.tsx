@@ -109,10 +109,13 @@ export default async function RoundSummaryPage({
     handicap: h.handicap,
   }));
 
+  const startingHole = round.starting_hole ?? 1;
+
   const results = calculateRoundUnits(
     Object.values(playerDataMap),
     mappedCourseHoles,
-    round.holes_to_play
+    round.holes_to_play,
+    startingHole
   ).sort((a, b) => b.units - a.units);
 
   const settlement = buildSettlementSummary(results, Number(round.unit_value ?? 0));
@@ -157,6 +160,8 @@ export default async function RoundSummaryPage({
             })}
             {" · "}
             {round.holes_to_play} hoyos
+            {" · "}
+            Inicio en hoyo {startingHole}
           </p>
         </section>
 

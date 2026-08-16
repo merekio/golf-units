@@ -36,6 +36,7 @@ export default function RoundForm() {
   );
   const [roundMode, setRoundMode] = useState<RoundMode>("eighteen");
   const [holesToPlay, setHolesToPlay] = useState(18);
+  const [startingHole, setStartingHole] = useState<1 | 10>(1);
   const [unitValue, setUnitValue] = useState(20);
   const [selectedPlayers, setSelectedPlayers] = useState<SelectedPlayer[]>([]);
   const [error, setError] = useState("");
@@ -158,6 +159,7 @@ export default function RoundForm() {
         courseId,
         roundDate,
         holesToPlay,
+        startingHole,
         unitValue,
         players: selectedPlayers.map((p) => ({
           playerId: p.playerId,
@@ -180,6 +182,7 @@ export default function RoundForm() {
         roundId={roundId}
         courseId={courseId}
         holesToPlay={holesToPlay}
+        startingHole={startingHole}
         players={selectedPlayers.map((p) => ({
           id: p.playerId,
           alias: p.name,
@@ -244,6 +247,27 @@ export default function RoundForm() {
               <option value="cut">Corte / vuelta</option>
             </select>
           </label>
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Hoyo de inicio</span>
+            <select
+              value={startingHole}
+              onChange={(event) => setStartingHole(Number(event.target.value) as 1 | 10)}
+              className="mt-1 block w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+            >
+              <option value={1}>Hoyo 1</option>
+              <option value={10}>Hoyo 10</option>
+            </select>
+            <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+              {holesToPlay === 9
+                ? startingHole === 1
+                  ? "Se juegan los hoyos 1 al 9."
+                  : "Se juegan los hoyos 10 al 18."
+                : startingHole === 1
+                  ? "Se juegan los hoyos 1 al 9 y se continúa del 10 al 18."
+                  : "Se juegan los hoyos 10 al 18 y se continúa del 1 al 9."}
+            </span>
+          </label>
+
           <label className="block">
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Holes a jugar</span>
             <input

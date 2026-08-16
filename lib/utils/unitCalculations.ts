@@ -37,12 +37,23 @@ export type UnitCalculationResult = {
 
 type UnitsByHoleAndPlayer = Record<number, Record<string, number>>;
 
+// Secuencia de hoyos en orden de juego. Una ronda puede iniciar en el hoyo 1 o
+// en el 10; al iniciar en el 10 con 18 hoyos se juega 10-18 y continúa 1-9.
+export function getPlaySequence(startingHole: number, holesToPlay: number): number[] {
+  return Array.from(
+    { length: holesToPlay },
+    (_, i) => ((startingHole - 1 + i) % 18) + 1
+  );
+}
+
 export function calculateRoundUnits(
   players: PlayerRoundData[],
   courseHoles: CourseHole[],
-  holesToPlay: number
+  holesToPlay: number,
+  startingHole: number = 1
 ): UnitCalculationResult[] {
   const numPlayers = players.length;
+  const playSequence = getPlaySequence(startingHole, holesToPlay);
 
   // Accumulators per player
   const totalUnitsByPlayer: Record<string, number> = {};
@@ -61,7 +72,7 @@ export function calculateRoundUnits(
     backPutts[p.playerId] = 0;
   });
 
-  for (let holeNum = 1; holeNum <= holesToPlay; holeNum++) {
+  for (const holeNum of playSequence) {
     const courseHole = courseHoles.find((h) => h.holeNumber === holeNum);
     if (!courseHole) continue;
 
@@ -277,10 +288,10 @@ export function calculateRoundUnits(
     });
   }
 
-  const regulationByHole = calculateRegulationByHole(players, courseHoles, holesToPlay);
-  const hoyoByHole = calculateHoyoByHole(players, courseHoles, holesToPlay);
+  const regulationByHole = calculateRegulationByHole(players, courseHoles, playSequence);
+  const hoyoByHole = calculateHoyoByHole(players, courseHoles, playSequence);
 
-  for (let holeNum = 1; holeNum <= holesToPlay; holeNum++) {
+  for (const holeNum of playSequence) {
     players.forEach((player) => {
       const breakdown = breakdownByPlayer[player.playerId].find((item) => item.hole === holeNum);
       if (!breakdown) return;
@@ -325,16 +336,16 @@ export function calculateRoundUnits(
 // pierde frente a regulación 1. Y así sucesivamente en cascada hasta el último lugar.
 function createUnitsByHoleAndPlayer(
   players: PlayerRoundData[],
-  holesToPlay: number
+  holeNumbers: number[]
 ): UnitsByHoleAndPlayer {
   const result: UnitsByHoleAndPlayer = {};
 
-  for (let holeNum = 1; holeNum <= holesToPlay; holeNum++) {
+  holeNumbers.forEach((holeNum) => {
     result[holeNum] = {};
     players.forEach((player) => {
       result[holeNum][player.playerId] = 0;
     });
-  }
+  });
 
   return result;
 }
@@ -342,12 +353,12 @@ function createUnitsByHoleAndPlayer(
 function calculateRegulationByHole(
   players: PlayerRoundData[],
   courseHoles: CourseHole[],
-  holesToPlay: number
+  holeNumbers: number[]
 ): UnitsByHoleAndPlayer {
-  const regulationByHole = createUnitsByHoleAndPlayer(players, holesToPlay);
+  const regulationByHole = createUnitsByHoleAndPlayer(players, holeNumbers);
   const numPlayers = players.length;
 
-  for (let holeNum = 1; holeNum <= holesToPlay; holeNum++) {
+  for (const holeNum of holeNumbers) {
     const courseHole = courseHoles.find((h) => h.holeNumber === holeNum);
     if (!courseHole) continue;
 
@@ -392,11 +403,11 @@ function getStrokesOnHole(holeHandicap: number, strokesDiff: number): number {
 function calculateHoyoByHole(
   players: PlayerRoundData[],
   courseHoles: CourseHole[],
-  holesToPlay: number
+  holeNumbers: number[]
 ): UnitsByHoleAndPlayer {
-  const hoyoByHole = createUnitsByHoleAndPlayer(players, holesToPlay);
+  const hoyoByHole = createUnitsByHoleAndPlayer(players, holeNumbers);
 
-  for (let holeNum = 1; holeNum <= holesToPlay; holeNum++) {
+  for (const holeNum of holeNumbers) {
     const courseHole = courseHoles.find((h) => h.holeNumber === holeNum);
     if (!courseHole) continue;
 

@@ -33,6 +33,7 @@ type CreateRoundInput = {
   courseId: string;
   roundDate: string;
   holesToPlay: number;
+  startingHole: number;
   unitValue: number;
   players: RoundPlayerInput[];
 };
@@ -86,6 +87,7 @@ export type RoundDetailData = {
     course_id: string | null;
     round_date: string;
     holes_to_play: number;
+    starting_hole: number | null;
     unit_value: number;
   };
   holeScores: Array<{
@@ -129,7 +131,7 @@ export async function getRoundDetail(roundId: string): Promise<RoundDetailData> 
   if (authError || !user) throw new Error("No autenticado");
 
   const [roundResult, holeScoresResult, roundPlayersResult] = await Promise.all([
-    supabase.from("rounds").select("id, course_id, round_date, holes_to_play, unit_value").eq("id", roundId).single(),
+    supabase.from("rounds").select("id, course_id, round_date, holes_to_play, starting_hole, unit_value").eq("id", roundId).single(),
     supabase.from("hole_scores").select("hole_number, player_id, guest_player_id, strokes, putts, banderas_count, regulation_rank, birdie, eagle, sand_par, hole_out, pinkis, salida_green, spanish").eq("round_id", roundId),
     supabase.from("round_players").select("player_id, guest_player_id, playing_hcp, players(alias), guest_players(name)").eq("round_id", roundId),
   ]);
@@ -171,6 +173,7 @@ export async function createRound({
   courseId,
   roundDate,
   holesToPlay,
+  startingHole,
   unitValue,
   players,
 }: CreateRoundInput) {
@@ -190,6 +193,7 @@ export async function createRound({
       course_id: courseId,
       round_date: roundDate,
       holes_to_play: holesToPlay,
+      starting_hole: startingHole,
       unit_value: unitValue,
     })
     .select()
