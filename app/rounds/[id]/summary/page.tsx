@@ -381,6 +381,12 @@ export default async function RoundSummaryPage({
             ← Volver a Rondas
           </Link>
           <Link
+            href={`/rounds/${round.id}/capture`}
+            className="inline-flex rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+          >
+            Editar ronda
+          </Link>
+          <Link
             href="/dashboard"
             className="inline-flex rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
           >

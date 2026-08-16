@@ -219,6 +219,79 @@ export async function createRound({
   return round;
 }
 
+function buildHoleScoreRow(
+  roundId: string,
+  holeNumber: number,
+  playerId: string,
+  isGuest: boolean,
+  shotData: HoleShotData,
+  par: number
+): Record<string, unknown> {
+  const normalizedEvents = applyAutomaticHoleEvents(
+    par,
+    shotData.strokes,
+    shotData.putts,
+    shotData.events
+  );
+
+  return {
+    round_id: roundId,
+    hole_number: holeNumber,
+    player_id: isGuest ? null : playerId,
+    guest_player_id: isGuest ? playerId : null,
+    strokes: shotData.strokes,
+    putts: shotData.putts,
+    banderas_count: normalizedEvents.banderas,
+    regulation_rank: normalizedEvents.regulation || null,
+    otras_unidades: normalizedEvents.otras ?? 0,
+    hit_green_regulation: normalizedEvents.regulation > 0,
+    birdie: normalizedEvents.birdie,
+    eagle: normalizedEvents.eagle,
+    sand_par: normalizedEvents.sandPar,
+    hole_out: normalizedEvents.holeOut,
+    pinkis: normalizedEvents.pinkis,
+    salida_green: normalizedEvents.salidaGreen,
+    bunker_shot: false,
+    spanish: normalizedEvents.espanol,
+  };
+}
+
+// Guarda (o reemplaza) los scores de un solo hoyo. Se usa al navegar entre
+// hoyos para que una ronda interrumpida se pueda continuar después.
+export async function saveHoleScores(
+  roundId: string,
+  holeNumber: number,
+  playerData: Record<string, HoleShotData>,
+  playerGuestMap: Record<string, boolean>,
+  par: number
+) {
+  const supabase = await createSupabaseServerClient();
+
+  const { error: deleteError } = await supabase
+    .from("hole_scores")
+    .delete()
+    .eq("round_id", roundId)
+    .eq("hole_number", holeNumber);
+
+  if (deleteError) throw deleteError;
+
+  const rows = Object.entries(playerData).map(([playerId, shotData]) =>
+    buildHoleScoreRow(
+      roundId,
+      holeNumber,
+      playerId,
+      playerGuestMap[playerId] ?? false,
+      shotData,
+      par
+    )
+  );
+
+  if (rows.length === 0) return;
+
+  const { error } = await supabase.from("hole_scores").insert(rows);
+  if (error) throw error;
+}
+
 export async function saveRoundHoles(
   roundId: string,
   holes: Record<number, Record<string, HoleShotData>>,
@@ -233,37 +306,30 @@ export async function saveRoundHoles(
     Object.entries(playerData).forEach(([playerId, shotData]) => {
       const isGuest = playerGuestMap?.[playerId] ?? false;
       const parsedHoleNumber = Number(holeNumber);
-      const normalizedEvents = applyAutomaticHoleEvents(
-        parByHole.get(parsedHoleNumber) ?? 4,
-        shotData.strokes,
-        shotData.putts,
-        shotData.events
-      );
 
-      holeScoresData.push({
-        round_id: roundId,
-        hole_number: parsedHoleNumber,
-        player_id: isGuest ? null : playerId,
-        guest_player_id: isGuest ? playerId : null,
-        strokes: shotData.strokes,
-        putts: shotData.putts,
-        banderas_count: normalizedEvents.banderas,
-        regulation_rank: normalizedEvents.regulation || null,
-        otras_unidades: normalizedEvents.otras ?? 0,
-        hit_green_regulation: normalizedEvents.regulation > 0,
-        birdie: normalizedEvents.birdie,
-        eagle: normalizedEvents.eagle,
-        sand_par: normalizedEvents.sandPar,
-        hole_out: normalizedEvents.holeOut,
-        pinkis: normalizedEvents.pinkis,
-        salida_green: normalizedEvents.salidaGreen,
-        bunker_shot: false,
-        spanish: normalizedEvents.espanol,
-      });
+      holeScoresData.push(
+        buildHoleScoreRow(
+          roundId,
+          parsedHoleNumber,
+          playerId,
+          isGuest,
+          shotData,
+          parByHole.get(parsedHoleNumber) ?? 4
+        )
+      );
     });
   });
 
   if (holeScoresData.length === 0) return;
+
+  // Reemplazo total: permite finalizar rondas reanudadas y editar rondas ya
+  // terminadas sin duplicar scores guardados hoyo por hoyo.
+  const { error: deleteError } = await supabase
+    .from("hole_scores")
+    .delete()
+    .eq("round_id", roundId);
+
+  if (deleteError) throw deleteError;
 
   const { error } = await supabase.from("hole_scores").insert(holeScoresData);
   if (error) throw error;

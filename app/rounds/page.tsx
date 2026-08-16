@@ -85,14 +85,22 @@ export default async function RoundsPage() {
                     Ver →
                   </span>
                 </Link>
-                <DeleteRoundButton
-                  roundId={round.id}
-                  roundDate={new Date(round.round_date + "T12:00:00").toLocaleDateString("es-MX", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                />
+                <div className="flex items-center gap-3">
+                  <Link
+                    href={`/rounds/${round.id}/capture`}
+                    className="inline-flex whitespace-nowrap rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                  >
+                    Capturar / Editar
+                  </Link>
+                  <DeleteRoundButton
+                    roundId={round.id}
+                    roundDate={new Date(round.round_date + "T12:00:00").toLocaleDateString("es-MX", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  />
+                </div>
               </div>
             ))
           )}

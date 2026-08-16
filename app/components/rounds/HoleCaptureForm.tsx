@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveRoundHoles, HoleShotData, HoleEventFlags } from "@/lib/actions/rounds";
+import { saveRoundHoles, saveHoleScores, HoleShotData, HoleEventFlags } from "@/lib/actions/rounds";
 import { getCourses, CourseRecord } from "@/lib/actions/courses";
 import { applyAutomaticHoleEvents, AUTO_EVENT_KEYS } from "@/lib/utils/holeEvents";
 import { calculateRoundUnits, getPlaySequence, CourseHole, PlayerRoundData } from "@/lib/utils/unitCalculations";
@@ -17,6 +17,7 @@ interface HoleCaptureFormProps {
   startingHole: number;
   players: Player[];
   unitValue: number;
+  initialHoleData?: Record<number, Record<string, HoleShotData>>;
 }
 
 const defaultEvents: HoleEventFlags = {
@@ -85,6 +86,7 @@ export default function HoleCaptureForm({
   holesToPlay,
   startingHole,
   players,
+  initialHoleData,
 }: HoleCaptureFormProps) {
   const router = useRouter();
   const playSequence = useMemo(
@@ -97,6 +99,7 @@ export default function HoleCaptureForm({
   const [otrasInput, setOtrasInput] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isNavSaving, setIsNavSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const currentHole = playSequence[currentHoleIndex] ?? playSequence[0] ?? 1;
@@ -112,10 +115,19 @@ export default function HoleCaptureForm({
         for (const h of playSequence) {
           initialData[h] = {};
           players.forEach((p) => {
-            initialData[h][p.id] = { ...defaultShot };
+            initialData[h][p.id] = initialHoleData?.[h]?.[p.id]
+              ? { ...initialHoleData[h][p.id] }
+              : { ...defaultShot };
           });
         }
         setHoleData(initialData);
+
+        // Al reanudar una ronda, arranca en el primer hoyo sin capturar; si la
+        // ronda está completa (edición), arranca en el primer hoyo jugado.
+        const firstIncompleteIndex = playSequence.findIndex(
+          (h) => !players.every((p) => (initialData[h]?.[p.id]?.strokes ?? 0) > 0)
+        );
+        setCurrentHoleIndex(firstIncompleteIndex === -1 ? 0 : firstIncompleteIndex);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error cargando datos";
         setError(message);
@@ -125,7 +137,7 @@ export default function HoleCaptureForm({
     }
 
     loadCourse();
-  }, [courseId, playSequence, players]);
+  }, [courseId, initialHoleData, playSequence, players]);
 
   const updatePlayerShot = (
     holeNum: number,
@@ -420,15 +432,60 @@ export default function HoleCaptureForm({
   const par = getHolePar(currentHole);
   const currentHoleOtrasBalance = getOtrasBalance(currentHole);
 
-  const goToNextHole = () => {
-    if (currentHoleOtrasBalance !== 0) {
+  // Guarda el hoyo actual en la base de datos para poder reanudar la ronda si
+  // la aplicación se cierra a media captura.
+  const persistHole = async (holeNum: number) => {
+    const playerData = holeData[holeNum];
+    if (!playerData) return;
+
+    const hasAnyData = players.some((p) => {
+      const shot = playerData[p.id];
+      if (!shot) return false;
+      return (
+        shot.strokes > 0 ||
+        shot.putts > 0 ||
+        shot.events.banderas > 0 ||
+        shot.events.regulation > 0 ||
+        shot.events.otras !== 0 ||
+        shot.events.sandPar ||
+        shot.events.holeOut ||
+        shot.events.pinkis ||
+        shot.events.salidaGreen
+      );
+    });
+    if (!hasAnyData) return;
+
+    const holePar = getHolePar(holeNum);
+    const normalized = Object.fromEntries(
+      players.map((p) => [
+        p.id,
+        withAutomaticEvents(playerData[p.id] ?? defaultShot, holePar),
+      ])
+    );
+    const guestMap = Object.fromEntries(players.map((p) => [p.id, p.isGuest]));
+
+    await saveHoleScores(roundId, holeNum, normalized, guestMap, holePar);
+  };
+
+  const goToHoleIndex = async (nextIndex: number, requireBalance: boolean) => {
+    if (requireBalance && currentHoleOtrasBalance !== 0) {
       setError(
         `Las Otras unidades del hoyo ${currentHole} suman ${currentHoleOtrasBalance > 0 ? "+" : ""}${currentHoleOtrasBalance}; deben sumar 0 entre todos los jugadores para pasar de hoyo.`
       );
       return;
     }
+
     setError("");
-    setCurrentHoleIndex(currentHoleIndex + 1);
+    try {
+      setIsNavSaving(true);
+      await persistHole(currentHole);
+      setCurrentHoleIndex(nextIndex);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error guardando el hoyo";
+      setError(`No se pudo guardar el hoyo ${currentHole}: ${message}`);
+    } finally {
+      setIsNavSaving(false);
+    }
   };
 
   return (
@@ -792,8 +849,8 @@ export default function HoleCaptureForm({
           <div className="mt-6 flex gap-3">
             <button
               type="button"
-              disabled={currentHoleIndex === 0}
-              onClick={() => setCurrentHoleIndex(Math.max(0, currentHoleIndex - 1))}
+              disabled={currentHoleIndex === 0 || isNavSaving}
+              onClick={() => goToHoleIndex(Math.max(0, currentHoleIndex - 1), false)}
               className="inline-flex rounded-full bg-slate-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               ← Anterior
@@ -804,10 +861,11 @@ export default function HoleCaptureForm({
             {currentHoleIndex < playSequence.length - 1 ? (
               <button
                 type="button"
-                onClick={goToNextHole}
-                className="inline-flex rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                disabled={isNavSaving}
+                onClick={() => goToHoleIndex(currentHoleIndex + 1, true)}
+                className="inline-flex rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                Siguiente →
+                {isNavSaving ? "Guardando..." : "Siguiente →"}
               </button>
             ) : (
               <button
