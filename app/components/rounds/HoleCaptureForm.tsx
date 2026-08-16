@@ -567,32 +567,27 @@ export default function HoleCaptureForm({
         </section>
 
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
-          <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-6 rounded-t-[2rem] border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
-            <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-              <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Hoyo actual ({currentHoleIndex + 1} de {holesToPlay})
-                </p>
-                <h2 className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {currentHole}
-                </h2>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-slate-600 dark:text-slate-400">Par</p>
-                <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{par}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-slate-600 dark:text-slate-400">Balance Otras</p>
-                <p
-                  className={`text-2xl font-bold ${
-                    currentHoleOtrasBalance === 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-amber-600 dark:text-amber-400"
-                  }`}
-                >
-                  {currentHoleOtrasBalance === 0 ? "✓" : currentHoleOtrasBalance > 0 ? `+${currentHoleOtrasBalance}` : currentHoleOtrasBalance}
-                </p>
-              </div>
+          <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-6 flex items-center justify-between gap-3 rounded-t-[2rem] border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                Hoyo <span className="text-2xl text-emerald-600 dark:text-emerald-400">{currentHole}</span>
+              </span>
+              <span className="text-slate-400 dark:text-slate-600">•</span>
+              <span>
+                {currentHoleIndex + 1} de {holesToPlay}
+              </span>
+              <span className="text-slate-400 dark:text-slate-600">•</span>
+              <span>Par {par}</span>
+              <span className="text-slate-400 dark:text-slate-600">•</span>
+              <span
+                className={`font-medium ${
+                  currentHoleOtrasBalance === 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-amber-600 dark:text-amber-400"
+                }`}
+              >
+                Balance: {currentHoleOtrasBalance === 0 ? "✓" : currentHoleOtrasBalance > 0 ? `+${currentHoleOtrasBalance}` : currentHoleOtrasBalance}
+              </span>
             </div>
           </div>
 
