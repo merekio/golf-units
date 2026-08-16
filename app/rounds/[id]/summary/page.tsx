@@ -66,6 +66,14 @@ export default async function RoundSummaryPage({
 
   const { round, holeScores, roundPlayers, courseHoles } = detail;
 
+  const ajusteByPlayer: Record<string, number> = {};
+  roundPlayers.forEach((rp) => {
+    const effectiveId = rp.player_id ?? rp.guest_player_id;
+    if (effectiveId) {
+      ajusteByPlayer[effectiveId] = rp.ajuste_pesos ?? 0;
+    }
+  });
+
   const playerDataMap: Record<string, PlayerRoundData> = {};
   roundPlayers.forEach((rp) => {
     const effectiveId = rp.player_id ?? rp.guest_player_id;
@@ -121,6 +129,31 @@ export default async function RoundSummaryPage({
   ).sort((a, b) => b.units - a.units);
 
   const settlement = buildSettlementSummary(results, Number(round.unit_value ?? 0));
+
+  // Ajustar el settlement con los ajustes en pesos
+  const adjustedRows = settlement.rows.map((row) => {
+    const ajuste = ajusteByPlayer[row.playerId] ?? 0;
+    const adjustedAmount = row.amount + ajuste;
+    let direction: "receive" | "pay" | "neutral" = "neutral";
+    if (adjustedAmount > 0) direction = "receive";
+    else if (adjustedAmount < 0) direction = "pay";
+
+    return {
+      ...row,
+      ajuste,
+      originalAmount: row.amount,
+      amount: adjustedAmount,
+      direction,
+    };
+  });
+
+  const adjustedSettlement = {
+    ...settlement,
+    rows: adjustedRows,
+    totalToReceive: adjustedRows.reduce((sum, r) => sum + Math.max(0, r.amount), 0),
+    totalToPay: adjustedRows.reduce((sum, r) => sum + Math.abs(Math.min(0, r.amount)), 0),
+  };
+
   const playerUnitStats = results.map((result) => {
     let cumulativeUnits = 0;
     let unitsWon = 0;
@@ -184,25 +217,25 @@ export default async function RoundSummaryPage({
             <div className="rounded-2xl bg-emerald-50 p-4 dark:bg-emerald-950/20">
               <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Cobros</p>
               <p className="mt-1 text-xl font-semibold text-emerald-700 dark:text-emerald-400">
-                {currency.format(settlement.totalToReceive)}
+                {currency.format(adjustedSettlement.totalToReceive)}
               </p>
             </div>
             <div className="rounded-2xl bg-red-50 p-4 dark:bg-red-950/20">
               <p className="text-xs uppercase tracking-wide text-red-700 dark:text-red-300">Pagos</p>
               <p className="mt-1 text-xl font-semibold text-red-700 dark:text-red-400">
-                {currency.format(settlement.totalToPay)}
+                {currency.format(adjustedSettlement.totalToPay)}
               </p>
             </div>
             <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900">
               <p className="text-xs uppercase tracking-wide text-slate-700 dark:text-slate-300">Estado</p>
               <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {settlement.hasImbalance ? "Saldo pendiente" : "Bolsa balanceada ✓"}
+                {adjustedSettlement.hasImbalance ? "Saldo pendiente" : "Bolsa balanceada ✓"}
               </p>
             </div>
             </div>
 
           <div className="space-y-3">
-            {settlement.rows.map((row) => {
+            {adjustedSettlement.rows.map((row) => {
               const moneyLabel =
                 row.direction === "receive"
                   ? `Recibe ${currency.format(row.amount)}`
@@ -233,6 +266,14 @@ export default async function RoundSummaryPage({
                       <span className="font-semibold text-red-600 dark:text-red-400">
                         -{Math.abs(Math.min(0, row.units))}
                       </span>
+                      {row.ajuste !== 0 && (
+                        <>
+                          {" · "}
+                          <span className={row.ajuste > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>
+                            Ajuste: {row.ajuste > 0 ? "+" : ""}{currency.format(row.ajuste)}
+                          </span>
+                        </>
+                      )}
                     </p>
                   </div>
                   <span className={`rounded-full px-3 py-2 text-sm font-semibold ${colorClass}`}>

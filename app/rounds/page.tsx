@@ -67,14 +67,19 @@ export default async function RoundsPage() {
                   href={`/rounds/${round.id}/summary`}
                   className="block flex-1"
                 >
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
-                    {new Date(round.round_date + "T12:00:00").toLocaleDateString("es-MX", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+                      {new Date(round.round_date + "T12:00:00").toLocaleDateString("es-MX", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                    <span className="rounded-md bg-slate-200 px-2 py-0.5 text-xs font-mono font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      {round.id.slice(-12)}
+                    </span>
+                  </div>
                   <h3 className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
                     {round.courseName}
                   </h3>

@@ -27,6 +27,7 @@ export type HoleShotData = {
 type RoundPlayerInput = {
   playerId: string;
   playingHcp: number;
+  ajustePesos: number;
   isGuest: boolean;
 };
 
@@ -112,6 +113,7 @@ export type RoundDetailData = {
     player_id: string | null;
     guest_player_id: string | null;
     playing_hcp: number | null;
+    ajuste_pesos: number | null;
     players: { alias: string } | null;
     guest_players: { name: string } | null;
   }>;
@@ -135,7 +137,7 @@ export async function getRoundDetail(roundId: string): Promise<RoundDetailData> 
   const [roundResult, holeScoresResult, roundPlayersResult] = await Promise.all([
     supabase.from("rounds").select("id, course_id, round_date, holes_to_play, starting_hole, unit_value").eq("id", roundId).single(),
     supabase.from("hole_scores").select("hole_number, player_id, guest_player_id, strokes, putts, banderas_count, regulation_rank, otras_unidades, birdie, eagle, sand_par, hole_out, pinkis, salida_green, spanish").eq("round_id", roundId),
-    supabase.from("round_players").select("player_id, guest_player_id, playing_hcp, players(alias), guest_players(name)").eq("round_id", roundId),
+    supabase.from("round_players").select("player_id, guest_player_id, playing_hcp, ajuste_pesos, players(alias), guest_players(name)").eq("round_id", roundId),
   ]);
 
   if (roundResult.error) throw roundResult.error;
@@ -164,6 +166,7 @@ export async function getRoundDetail(roundId: string): Promise<RoundDetailData> 
       player_id: rp.player_id,
       guest_player_id: rp.guest_player_id,
       playing_hcp: rp.playing_hcp,
+      ajuste_pesos: rp.ajuste_pesos,
       players: firstRelationRow(rp.players),
       guest_players: firstRelationRow(rp.guest_players),
     })),
@@ -208,6 +211,7 @@ export async function createRound({
     player_id: p.isGuest ? null : p.playerId,
     guest_player_id: p.isGuest ? p.playerId : null,
     playing_hcp: p.playingHcp,
+    ajuste_pesos: p.ajustePesos,
   }));
 
   const { error: playersError } = await supabase

@@ -15,6 +15,7 @@ type SelectedPlayer = {
   playerId: string;
   name: string;
   playingHcp: number;
+  ajustePesos: number;
   isGuest: boolean;
 };
 
@@ -94,6 +95,7 @@ export default function RoundForm() {
           playerId: player.id,
           name,
           playingHcp: hcp,
+          ajustePesos: 0,
           isGuest: player.isGuest,
         },
       ];
@@ -118,6 +120,7 @@ export default function RoundForm() {
           playerId: guest.id,
           name: guest.name,
           playingHcp: guest.handicap,
+          ajustePesos: 0,
           isGuest: true,
         },
       ];
@@ -131,6 +134,19 @@ export default function RoundForm() {
       )
     );
   };
+
+  const updatePlayerAjuste = (playerId: string, ajustePesos: number) => {
+    setSelectedPlayers((current) =>
+      current.map((item) =>
+        item.playerId === playerId ? { ...item, ajustePesos } : item
+      )
+    );
+  };
+
+  const ajusteBalance = selectedPlayers.reduce(
+    (sum, player) => sum + player.ajustePesos,
+    0
+  );
 
   const selectedPlayerIds = selectedPlayers.map((player) => player.playerId);
 
@@ -153,6 +169,13 @@ export default function RoundForm() {
       return;
     }
 
+    if (ajusteBalance !== 0) {
+      setError(
+        `Los ajustes deben sumar 0 entre todos los jugadores. Balance actual: ${ajusteBalance > 0 ? "+" : ""}${ajusteBalance}`
+      );
+      return;
+    }
+
     try {
       setIsSaving(true);
       const round = await createRound({
@@ -164,6 +187,7 @@ export default function RoundForm() {
         players: selectedPlayers.map((p) => ({
           playerId: p.playerId,
           playingHcp: p.playingHcp,
+          ajustePesos: p.ajustePesos,
           isGuest: p.isGuest,
         })),
       });
@@ -347,20 +371,39 @@ export default function RoundForm() {
                       <span className="font-medium text-slate-100">{player.alias}</span>
                     </label>
                     {selected ? (
-                      <label className="grid gap-2 sm:grid-cols-[1fr_120px] sm:items-center">
-                        <span className="text-sm text-slate-300">HCP para la ronda</span>
-                        <input
-                          type="number"
-                          value={
-                            selectedPlayers.find((item) => item.playerId === player.id)
-                              ?.playingHcp ?? 0
-                          }
-                          onChange={(event) =>
-                            updatePlayerHcp(player.id, Number(event.target.value))
-                          }
-                          className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
-                        />
-                      </label>
+                      <div className="space-y-3">
+                        <label className="grid gap-2 sm:grid-cols-[1fr_120px] sm:items-center">
+                          <span className="text-sm text-slate-300">HCP para la ronda</span>
+                          <input
+                            type="number"
+                            value={
+                              selectedPlayers.find((item) => item.playerId === player.id)
+                                ?.playingHcp ?? 0
+                            }
+                            onChange={(event) =>
+                              updatePlayerHcp(player.id, Number(event.target.value))
+                            }
+                            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                          />
+                        </label>
+                        <label className="grid gap-2 sm:grid-cols-[1fr_120px] sm:items-center">
+                          <span className="text-sm text-slate-300">
+                            Ajuste ($) <span className="text-xs text-slate-500">+ recibe / - da</span>
+                          </span>
+                          <input
+                            type="number"
+                            value={
+                              selectedPlayers.find((item) => item.playerId === player.id)
+                                ?.ajustePesos ?? 0
+                            }
+                            onChange={(event) =>
+                              updatePlayerAjuste(player.id, Number(event.target.value))
+                            }
+                            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                            placeholder="0"
+                          />
+                        </label>
+                      </div>
                     ) : null}
                   </div>
                 );
@@ -399,28 +442,77 @@ export default function RoundForm() {
                       </span>
                     </label>
                     {selected ? (
-                      <label className="grid gap-2 sm:grid-cols-[1fr_120px] sm:items-center">
-                        <span className="text-sm text-slate-300">
-                          HCP para la ronda
-                        </span>
-                        <input
-                          type="number"
-                          value={
-                            selectedPlayers.find((item) => item.playerId === guest.id)
-                              ?.playingHcp ?? guest.handicap
-                          }
-                          onChange={(event) =>
-                            updatePlayerHcp(guest.id, Number(event.target.value))
-                          }
-                          className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
-                        />
-                      </label>
+                      <div className="space-y-3">
+                        <label className="grid gap-2 sm:grid-cols-[1fr_120px] sm:items-center">
+                          <span className="text-sm text-slate-300">
+                            HCP para la ronda
+                          </span>
+                          <input
+                            type="number"
+                            value={
+                              selectedPlayers.find((item) => item.playerId === guest.id)
+                                ?.playingHcp ?? guest.handicap
+                            }
+                            onChange={(event) =>
+                              updatePlayerHcp(guest.id, Number(event.target.value))
+                            }
+                            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                          />
+                        </label>
+                        <label className="grid gap-2 sm:grid-cols-[1fr_120px] sm:items-center">
+                          <span className="text-sm text-slate-300">
+                            Ajuste ($) <span className="text-xs text-slate-500">+ recibe / - da</span>
+                          </span>
+                          <input
+                            type="number"
+                            value={
+                              selectedPlayers.find((item) => item.playerId === guest.id)
+                                ?.ajustePesos ?? 0
+                            }
+                            onChange={(event) =>
+                              updatePlayerAjuste(guest.id, Number(event.target.value))
+                            }
+                            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                            placeholder="0"
+                          />
+                        </label>
+                      </div>
                     ) : null}
                   </div>
                 );
               })}
             </div>
           </section>
+        )}
+
+        {selectedPlayers.length > 0 && (
+          <div
+            className={`rounded-2xl border p-4 ${
+              ajusteBalance === 0
+                ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20"
+                : "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Balance de ajustes:
+              </span>
+              <span
+                className={`text-lg font-bold ${
+                  ajusteBalance === 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-amber-600 dark:text-amber-400"
+                }`}
+              >
+                {ajusteBalance === 0 ? "✓ Balanceado" : `${ajusteBalance > 0 ? "+" : ""}${ajusteBalance}`}
+              </span>
+            </div>
+            {ajusteBalance !== 0 && (
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                Los ajustes deben sumar 0 entre todos los jugadores para iniciar la ronda.
+              </p>
+            )}
+          </div>
         )}
 
         <button
