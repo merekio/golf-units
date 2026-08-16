@@ -97,6 +97,7 @@ export default function HoleCaptureForm({
   const [currentHoleIndex, setCurrentHoleIndex] = useState(0);
   const [holeData, setHoleData] = useState<Record<number, Record<string, HoleShotData>>>({});
   const [otrasInput, setOtrasInput] = useState<Record<string, string>>({});
+  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isNavSaving, setIsNavSaving] = useState(false);
@@ -128,6 +129,13 @@ export default function HoleCaptureForm({
           (h) => !players.every((p) => (initialData[h]?.[p.id]?.strokes ?? 0) > 0)
         );
         setCurrentHoleIndex(firstIncompleteIndex === -1 ? 0 : firstIncompleteIndex);
+
+        // Expande el primer jugador sin capturar del hoyo inicial, o el primero
+        const startHole = playSequence[firstIncompleteIndex === -1 ? 0 : firstIncompleteIndex];
+        const firstIncompletePlayer = players.find(
+          (p) => (initialData[startHole]?.[p.id]?.strokes ?? 0) === 0
+        );
+        setExpandedPlayer(firstIncompletePlayer?.id ?? players[0]?.id ?? null);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error cargando datos";
         setError(message);
@@ -211,6 +219,10 @@ export default function HoleCaptureForm({
     setOtrasInput((prev) => ({ ...prev, [`${holeNum}:${playerId}`]: raw }));
     const parsed = raw === "" || raw === "-" ? 0 : Number(raw);
     togglePlayerEvent(holeNum, playerId, "otras", parsed);
+  };
+
+  const togglePlayer = (playerId: string) => {
+    setExpandedPlayer((prev) => (prev === playerId ? null : playerId));
   };
 
   const getOtrasBalance = (holeNum: number) =>
@@ -480,6 +492,15 @@ export default function HoleCaptureForm({
       setIsNavSaving(true);
       await persistHole(currentHole);
       setCurrentHoleIndex(nextIndex);
+
+      // Auto-expande el primer jugador sin capturar del hoyo siguiente
+      const nextHole = playSequence[nextIndex];
+      if (nextHole) {
+        const firstIncomplete = players.find(
+          (p) => (holeData[nextHole]?.[p.id]?.strokes ?? 0) === 0
+        );
+        setExpandedPlayer(firstIncomplete?.id ?? players[0]?.id ?? null);
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Error guardando el hoyo";
       setError(`No se pudo guardar el hoyo ${currentHole}: ${message}`);
@@ -546,18 +567,32 @@ export default function HoleCaptureForm({
         </section>
 
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
-          <div className="mb-6 flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Hoyo actual ({currentHoleIndex + 1} de {holesToPlay})
-              </p>
-              <h2 className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
-                {currentHole}
-              </h2>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-slate-600 dark:text-slate-400">Par</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{par}</p>
+          <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-6 rounded-t-[2rem] border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+            <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Hoyo actual ({currentHoleIndex + 1} de {holesToPlay})
+                </p>
+                <h2 className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
+                  {currentHole}
+                </h2>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Par</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{par}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Balance Otras</p>
+                <p
+                  className={`text-2xl font-bold ${
+                    currentHoleOtrasBalance === 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-amber-600 dark:text-amber-400"
+                  }`}
+                >
+                  {currentHoleOtrasBalance === 0 ? "✓" : currentHoleOtrasBalance > 0 ? `+${currentHoleOtrasBalance}` : currentHoleOtrasBalance}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -575,29 +610,57 @@ export default function HoleCaptureForm({
               const lostUnits = negativeEntries.reduce((sum, [, units]) => sum + Math.abs(units), 0);
               const playerBalance =
                 playerBalances.find((b) => b.playerId === player.id)?.units ?? 0;
+              const isExpanded = expandedPlayer === player.id;
+              const isComplete = shot.strokes > 0;
 
               return (
                 <div
                   key={player.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/50"
+                  className="rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950/50"
                 >
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-                      {player.alias}
-                    </h3>
-                    <span
-                      className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                        playerBalance > 0
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                          : playerBalance < 0
-                            ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
-                            : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                      }`}
-                    >
-                      Saldo: {playerBalance > 0 ? "+" : ""}
-                      {playerBalance}
-                    </span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => togglePlayer(player.id)}
+                    className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-slate-100 dark:hover:bg-slate-900/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg text-slate-400 dark:text-slate-500">
+                        {isExpanded ? "▼" : "▶"}
+                      </span>
+                      <div>
+                        <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                          {player.alias}
+                        </h3>
+                        {!isExpanded && (
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            {isComplete
+                              ? `${shot.strokes} golpes, ${shot.putts} putts`
+                              : "⚠️ Sin capturar"}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {isComplete && (
+                        <span className="text-emerald-600 dark:text-emerald-400">✓</span>
+                      )}
+                      <span
+                        className={`rounded-full px-3 py-1 text-sm font-semibold ${
+                          playerBalance > 0
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                            : playerBalance < 0
+                              ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                              : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        }`}
+                      >
+                        {playerBalance > 0 ? "+" : ""}
+                        {playerBalance}
+                      </span>
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="border-t border-slate-200 p-4 dark:border-slate-700">
 
                   <div className="mb-4 grid gap-3 sm:grid-cols-2">
                     <label className="block">
@@ -832,6 +895,8 @@ export default function HoleCaptureForm({
                       </div>
                     )}
                   </div>
+                  </div>
+                )}
                 </div>
               );
             })}
