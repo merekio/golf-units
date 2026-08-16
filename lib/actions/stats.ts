@@ -139,6 +139,7 @@ export async function getUserDashboardStats(
               banderas: hs.banderas_count ?? 0,
               regulation: hs.regulation_rank ?? 0,
               hoyo: 0,
+              otras: hs.otras_unidades ?? 0,
               sandPar: hs.sand_par ?? false,
               holeOut: hs.hole_out ?? false,
               espanol: hs.spanish ?? false,

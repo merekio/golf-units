@@ -25,6 +25,7 @@ const defaultEvents: HoleEventFlags = {
   banderas: 0,
   regulation: 0,
   hoyo: 0,
+  otras: 0,
   sandPar: false,
   holeOut: false,
   espanol: false,
@@ -72,6 +73,7 @@ function formatUnitConcept(concept: string) {
     "gana pinkis": "Pinkis rival",
     "regulación": "Unidades por regulación",
     "hoyo": "Hoyo ganado o perdido",
+    "otras": "Otras unidades",
   };
 
   return labels[concept] ?? concept;
@@ -92,6 +94,7 @@ export default function HoleCaptureForm({
   const [course, setCourse] = useState<Course | null>(null);
   const [currentHoleIndex, setCurrentHoleIndex] = useState(0);
   const [holeData, setHoleData] = useState<Record<number, Record<string, HoleShotData>>>({});
+  const [otrasInput, setOtrasInput] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -187,6 +190,22 @@ export default function HoleCaptureForm({
       },
     }));
   };
+
+  // Captura libre de "Otras unidades": permite escribir el signo y dígitos, y
+  // guarda el número parseado; "" o "-" a medio escribir valen 0.
+  const updatePlayerOtras = (holeNum: number, playerId: string, raw: string) => {
+    if (!/^-?\d*$/.test(raw)) return;
+
+    setOtrasInput((prev) => ({ ...prev, [`${holeNum}:${playerId}`]: raw }));
+    const parsed = raw === "" || raw === "-" ? 0 : Number(raw);
+    togglePlayerEvent(holeNum, playerId, "otras", parsed);
+  };
+
+  const getOtrasBalance = (holeNum: number) =>
+    players.reduce(
+      (sum, player) => sum + (holeData[holeNum]?.[player.id]?.events.otras ?? 0),
+      0
+    );
 
   const getHolePar = (holeNum: number): number => {
     return course?.holes?.find((h) => h.holeNumber === holeNum)?.par || 4;
@@ -348,6 +367,18 @@ export default function HoleCaptureForm({
       }
     }
 
+    // Validación 5: Las "Otras unidades" de cada hoyo deben sumar 0 entre todos
+    // los jugadores (lo que unos pierden lo ganan los demás).
+    for (const h of playSequence) {
+      const otrasSum = getOtrasBalance(h);
+      if (otrasSum !== 0) {
+        setError(
+          `Las Otras unidades del hoyo ${h} suman ${otrasSum > 0 ? "+" : ""}${otrasSum}; deben sumar 0 entre todos los jugadores.`
+        );
+        return;
+      }
+    }
+
     try {
       setIsSaving(true);
       const playerGuestMap = players.reduce((map, player) => ({
@@ -387,6 +418,18 @@ export default function HoleCaptureForm({
   }
 
   const par = getHolePar(currentHole);
+  const currentHoleOtrasBalance = getOtrasBalance(currentHole);
+
+  const goToNextHole = () => {
+    if (currentHoleOtrasBalance !== 0) {
+      setError(
+        `Las Otras unidades del hoyo ${currentHole} suman ${currentHoleOtrasBalance > 0 ? "+" : ""}${currentHoleOtrasBalance}; deben sumar 0 entre todos los jugadores para pasar de hoyo.`
+      );
+      return;
+    }
+    setError("");
+    setCurrentHoleIndex(currentHoleIndex + 1);
+  };
 
   return (
     <main className="flex-1 px-4 py-6 sm:px-6">
@@ -585,6 +628,28 @@ export default function HoleCaptureForm({
                     />
                   </label>
 
+                  <label className="mb-4 block">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                      Otras unidades (+/-)
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={
+                        otrasInput[`${currentHole}:${player.id}`] ??
+                        (shot.events.otras === 0 ? "" : String(shot.events.otras))
+                      }
+                      onChange={(e) =>
+                        updatePlayerOtras(currentHole, player.id, e.target.value)
+                      }
+                      className="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-400 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                      placeholder="0"
+                    />
+                    <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                      Positivas si gana, negativas si pierde. La suma entre jugadores debe ser 0.
+                    </span>
+                  </label>
+
                   <fieldset className="space-y-2 border-t border-slate-300 pt-3 dark:border-slate-700">
                     <legend className="text-sm font-medium text-slate-700 dark:text-slate-200">
                       Eventos
@@ -715,6 +780,15 @@ export default function HoleCaptureForm({
             })}
           </div>
 
+          {currentHoleOtrasBalance !== 0 ? (
+            <div className="mt-6 rounded-md bg-amber-100 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              Las Otras unidades del hoyo {currentHole} suman{" "}
+              {currentHoleOtrasBalance > 0 ? "+" : ""}
+              {currentHoleOtrasBalance}. Deben sumar 0 entre todos los jugadores para
+              poder pasar de hoyo.
+            </div>
+          ) : null}
+
           <div className="mt-6 flex gap-3">
             <button
               type="button"
@@ -730,7 +804,7 @@ export default function HoleCaptureForm({
             {currentHoleIndex < playSequence.length - 1 ? (
               <button
                 type="button"
-                onClick={() => setCurrentHoleIndex(currentHoleIndex + 1)}
+                onClick={goToNextHole}
                 className="inline-flex rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
               >
                 Siguiente →

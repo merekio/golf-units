@@ -260,6 +260,14 @@ export function calculateRoundUnits(
             (holeUnitsByEvent[other.playerId]["gana pinkis"] ?? 0) + 1;
         });
       }
+
+      // Otras unidades: captura libre por jugador (positiva o negativa).
+      // La UI valida que la suma del hoyo entre todos los jugadores sea 0.
+      const otras = events.otras ?? 0;
+      if (otras !== 0) {
+        holeUnitsByEvent[p.playerId]["otras"] =
+          (holeUnitsByEvent[p.playerId]["otras"] ?? 0) + otras;
+      }
     });
 
     // Commit this hole's data to each player's breakdown

@@ -32,6 +32,7 @@ function formatUnitConcept(concept: string) {
     "gana pinkis": "Pinkis rival",
     "regulación": "Unidades por regulación",
     "hoyo": "Hoyo ganado o perdido",
+    "otras": "Otras unidades",
   };
 
   return labels[concept] ?? concept;
@@ -93,6 +94,7 @@ export default async function RoundSummaryPage({
         banderas: hs.banderas_count ?? 0,
         regulation: hs.regulation_rank ?? 0,
         hoyo: 0,
+        otras: hs.otras_unidades ?? 0,
         sandPar: hs.sand_par ?? false,
         holeOut: hs.hole_out ?? false,
         espanol: hs.spanish ?? false,
