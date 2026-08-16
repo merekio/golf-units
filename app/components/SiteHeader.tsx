@@ -93,7 +93,7 @@ export default function SiteHeader() {
       {!hideNav && (
         <button
           onClick={() => setIsMenuOpen(true)}
-          className="fixed left-4 top-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg transition hover:bg-emerald-700 active:scale-95 md:hidden"
+          className="fixed right-4 top-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg transition hover:bg-emerald-700 active:scale-95 md:hidden"
           aria-label="Abrir menú"
         >
           <svg
@@ -122,8 +122,8 @@ export default function SiteHeader() {
 
       {/* Drawer del menú - solo móvil */}
       <div
-        className={`fixed left-0 top-0 z-50 h-full w-80 max-w-[85vw] transform bg-white shadow-2xl transition-transform duration-300 dark:bg-slate-950 md:hidden ${
-          isMenuOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed right-0 top-0 z-50 h-full w-80 max-w-[85vw] transform bg-white shadow-2xl transition-transform duration-300 dark:bg-slate-950 md:hidden ${
+          isMenuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex h-full flex-col">
