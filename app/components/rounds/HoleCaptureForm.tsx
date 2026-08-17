@@ -130,12 +130,9 @@ export default function HoleCaptureForm({
         );
         setCurrentHoleIndex(firstIncompleteIndex === -1 ? 0 : firstIncompleteIndex);
 
-        // Expande el primer jugador sin capturar del hoyo inicial, o el primero
-        const startHole = playSequence[firstIncompleteIndex === -1 ? 0 : firstIncompleteIndex];
-        const firstIncompletePlayer = players.find(
-          (p) => (initialData[startHole]?.[p.id]?.strokes ?? 0) === 0
-        );
-        setExpandedPlayer(firstIncompletePlayer?.id ?? players[0]?.id ?? null);
+        // El acordeón inicia contraído para mantener la experiencia móvil más limpia
+        // y evitar que se abra automáticamente un jugador al cambiar de hoyo.
+        setExpandedPlayer(null);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error cargando datos";
         setError(message);
@@ -492,15 +489,7 @@ export default function HoleCaptureForm({
       setIsNavSaving(true);
       await persistHole(currentHole);
       setCurrentHoleIndex(nextIndex);
-
-      // Auto-expande el primer jugador sin capturar del hoyo siguiente
-      const nextHole = playSequence[nextIndex];
-      if (nextHole) {
-        const firstIncomplete = players.find(
-          (p) => (holeData[nextHole]?.[p.id]?.strokes ?? 0) === 0
-        );
-        setExpandedPlayer(firstIncomplete?.id ?? players[0]?.id ?? null);
-      }
+      setExpandedPlayer(null);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Error guardando el hoyo";
       setError(`No se pudo guardar el hoyo ${currentHole}: ${message}`);
