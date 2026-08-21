@@ -71,7 +71,7 @@ function LoginContent() {
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8 dark:bg-slate-950">
       <div className="w-full max-w-md rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-950 dark:shadow-slate-950/40">
         <div className="mb-6 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-700 dark:text-emerald-300">Golf Units</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-700 dark:text-emerald-300">GUTi</p>
           <h1 className="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">Bienvenido</h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Inicia sesión con Google para gestionar tus rondas y campos.</p>
         </div>

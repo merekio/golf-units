@@ -98,7 +98,7 @@ export default function DashboardPage() {
             Bienvenido
           </p>
           <h1 className="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100 sm:text-4xl">
-            Golf Units
+            GUTi
           </h1>
           <p className="mt-3 max-w-2xl text-slate-600 dark:text-slate-400">
             Organiza tus rondas, campos y jugadores desde una interfaz móvil clara y fácil de usar.

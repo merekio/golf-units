@@ -252,16 +252,18 @@ export default function HoleCaptureForm({
       0
     );
 
+  const courseHoles = useMemo(() => course?.holes ?? [], [course]);
+
   const getHolePar = (holeNum: number): number => {
-    return course?.holes?.find((h) => h.holeNumber === holeNum)?.par || 4;
+    return courseHoles.find((h) => h.holeNumber === holeNum)?.par || 4;
   };
 
-  const roundUnitResults = useMemo(() => {
-    if (!course?.holes?.length) {
+  const roundUnitResults = (() => {
+    if (!courseHoles.length) {
       return [];
     }
 
-    const mappedCourseHoles: CourseHole[] = course.holes.map((h) => ({
+    const mappedCourseHoles: CourseHole[] = courseHoles.map((h) => ({
       holeNumber: h.holeNumber,
       par: h.par,
       handicap: h.handicap,
@@ -284,9 +286,9 @@ export default function HoleCaptureForm({
     });
 
     return calculateRoundUnits(playerRoundData, mappedCourseHoles, holesToPlay, startingHole);
-  }, [course?.holes, holeData, holesToPlay, playSequence, players, startingHole]);
+  })();
 
-  const capturedHoles = useMemo(() => {
+  const capturedHoles = (() => {
     const captured: number[] = [];
 
     for (const holeNum of playSequence) {
@@ -301,14 +303,14 @@ export default function HoleCaptureForm({
     }
 
     return captured;
-  }, [holeData, playSequence, players]);
+  })();
 
-  const capturedHoleUnitResults = useMemo(() => {
-    if (!course?.holes?.length) {
+  const capturedHoleUnitResults = (() => {
+    if (!courseHoles.length) {
       return [];
     }
 
-    const mappedCourseHoles: CourseHole[] = course.holes.map((h) => ({
+    const mappedCourseHoles: CourseHole[] = courseHoles.map((h) => ({
       holeNumber: h.holeNumber,
       par: h.par,
       handicap: h.handicap,
@@ -334,37 +336,31 @@ export default function HoleCaptureForm({
     });
 
     return calculateRoundUnits(playerRoundData, mappedCourseHoles, holesToPlay, startingHole);
-  }, [capturedHoles, course?.holes, holeData, holesToPlay, playSequence, players, startingHole]);
+  })();
 
-  const unitTotals = useMemo(() => {
-    const won = capturedHoleUnitResults.reduce((sum, result) => sum + Math.max(0, result.units), 0);
-    const lost = capturedHoleUnitResults.reduce((sum, result) => sum + Math.abs(Math.min(0, result.units)), 0);
+  const unitTotals = {
+    won: capturedHoleUnitResults.reduce((sum, result) => sum + Math.max(0, result.units), 0),
+    lost: capturedHoleUnitResults.reduce((sum, result) => sum + Math.abs(Math.min(0, result.units)), 0),
+    balance:
+      capturedHoleUnitResults.reduce((sum, result) => sum + Math.max(0, result.units), 0) -
+      capturedHoleUnitResults.reduce((sum, result) => sum + Math.abs(Math.min(0, result.units)), 0),
+  };
+
+  const playerBalances = players.map((player) => {
+    const result = capturedHoleUnitResults.find((r) => r.playerId === player.id);
     return {
-      won,
-      lost,
-      balance: won - lost,
+      playerId: player.id,
+      alias: player.alias,
+      units: result?.units ?? 0,
     };
-  }, [capturedHoleUnitResults]);
+  });
 
-  const playerBalances = useMemo(() => {
-    return players.map((player) => {
-      const result = capturedHoleUnitResults.find((r) => r.playerId === player.id);
-      return {
-        playerId: player.id,
-        alias: player.alias,
-        units: result?.units ?? 0,
-      };
-    });
-  }, [capturedHoleUnitResults, players]);
-
-  const currentHoleBreakdownByPlayer = useMemo(() => {
-    return Object.fromEntries(
-      roundUnitResults.map((result) => [
-        result.playerId,
-        result.breakdown.find((hole) => hole.hole === currentHole) ?? null,
-      ])
-    ) as Record<string, (typeof roundUnitResults)[number]["breakdown"][number] | null>;
-  }, [currentHole, roundUnitResults]);
+  const currentHoleBreakdownByPlayer = Object.fromEntries(
+    roundUnitResults.map((result) => [
+      result.playerId,
+      result.breakdown.find((hole) => hole.hole === currentHole) ?? null,
+    ])
+  ) as Record<string, (typeof roundUnitResults)[number]["breakdown"][number] | null>;
 
   const handleSubmit = async () => {
     setError("");
@@ -701,16 +697,17 @@ export default function HoleCaptureForm({
                         type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        value={shot.putts === 0 ? "" : shot.putts}
+                        value={shot.putts}
                         onFocus={handleNumericFocus}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const nextValue = e.target.value;
                           updatePlayerShot(
                             currentHole,
                             player.id,
                             "putts",
-                            e.target.value === "" ? 0 : Number(e.target.value)
-                          )
-                        }
+                            nextValue === "" ? 0 : Number(nextValue)
+                          );
+                        }}
                         className="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-400 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       />
                     </label>

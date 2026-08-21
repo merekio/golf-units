@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Golf Units",
+  title: "GUTi",
   description: "Aplicación móvil para golfistas",
 };
 

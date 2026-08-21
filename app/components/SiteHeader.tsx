@@ -21,11 +21,6 @@ export default function SiteHeader() {
 
   const hideNav = pathname.startsWith("/login") || pathname.startsWith("/auth");
 
-  // Cierra el menú al cambiar de ruta
-  useEffect(() => {
-    setIsMenuOpen(false);
-  }, [pathname]);
-
   // Previene scroll del body cuando el menú está abierto
   useEffect(() => {
     if (isMenuOpen) {
@@ -58,7 +53,7 @@ export default function SiteHeader() {
           <div className="flex items-center gap-3">
             <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-lg font-semibold text-white shadow">G</span>
             <div>
-              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">Golf Units</p>
+              <p className="text-base font-semibold text-slate-900 dark:text-slate-100">GUTi</p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Tu app de golf móvil</p>
             </div>
           </div>
@@ -71,6 +66,7 @@ export default function SiteHeader() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => setIsMenuOpen(false)}
                     className={`rounded-full border px-4 py-2 text-sm font-medium transition ${isActive ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"}`}
                   >
                     {item.label}
@@ -135,7 +131,7 @@ export default function SiteHeader() {
               </span>
               <div>
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Golf Units
+                  GUTi
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Menú</p>
               </div>
@@ -170,6 +166,7 @@ export default function SiteHeader() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => setIsMenuOpen(false)}
                     className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
                       isActive
                         ? "bg-emerald-600 text-white"
