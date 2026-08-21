@@ -209,13 +209,37 @@ export default function HoleCaptureForm({
   };
 
   // Captura libre de "Otras unidades": permite escribir el signo y dígitos, y
-  // guarda el número parseado; "" o "-" a medio escribir valen 0.
+  // guarda el número parseado; "", "+" o "-" a medio escribir valen 0.
   const updatePlayerOtras = (holeNum: number, playerId: string, raw: string) => {
-    if (!/^-?\d*$/.test(raw)) return;
+    if (!/^[+-]?\d*$/.test(raw)) return;
 
     setOtrasInput((prev) => ({ ...prev, [`${holeNum}:${playerId}`]: raw }));
-    const parsed = raw === "" || raw === "-" ? 0 : Number(raw);
+    const parsed = raw === "" || raw === "-" || raw === "+" ? 0 : Number(raw);
     togglePlayerEvent(holeNum, playerId, "otras", parsed);
+  };
+
+  const handleNumericFocus = (event: React.FocusEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const value = input.value;
+
+    if (value === "" || value === "0") {
+      input.setSelectionRange(0, 0);
+      return;
+    }
+
+    requestAnimationFrame(() => input.select());
+  };
+
+  const setOtrasSign = (holeNum: number, playerId: string, sign: "+" | "-") => {
+    const key = `${holeNum}:${playerId}`;
+    const currentValue =
+      otrasInput[key] ??
+      (holeData[holeNum]?.[playerId]?.events.otras === 0
+        ? ""
+        : String(holeData[holeNum]?.[playerId]?.events.otras ?? 0));
+    const digits = currentValue.replace(/[+-]/g, "");
+    const nextValue = digits === "" ? sign : `${sign}${digits}`;
+    updatePlayerOtras(holeNum, playerId, nextValue);
   };
 
   const togglePlayer = (playerId: string) => {
@@ -652,10 +676,11 @@ export default function HoleCaptureForm({
                         Golpes
                       </span>
                       <input
-                        type="number"
+                        type="text"
                         inputMode="numeric"
-                        min={0}
+                        pattern="[0-9]*"
                         value={shot.strokes === 0 ? "" : shot.strokes}
+                        onFocus={handleNumericFocus}
                         onChange={(e) =>
                           updatePlayerShot(
                             currentHole,
@@ -673,10 +698,11 @@ export default function HoleCaptureForm({
                         Putts
                       </span>
                       <input
-                        type="number"
+                        type="text"
                         inputMode="numeric"
-                        min={0}
+                        pattern="[0-9]*"
                         value={shot.putts === 0 ? "" : shot.putts}
+                        onFocus={handleNumericFocus}
                         onChange={(e) =>
                           updatePlayerShot(
                             currentHole,
@@ -715,10 +741,11 @@ export default function HoleCaptureForm({
                       Banderas capturadas
                     </span>
                     <input
-                      type="number"
+                      type="text"
                       inputMode="numeric"
-                      min={0}
+                      pattern="[0-9]*"
                       value={shot.events.banderas === 0 ? "" : shot.events.banderas}
+                      onFocus={handleNumericFocus}
                       onChange={(e) =>
                         togglePlayerEvent(
                           currentHole,
@@ -736,19 +763,39 @@ export default function HoleCaptureForm({
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                       Otras unidades (+/-)
                     </span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={
-                        otrasInput[`${currentHole}:${player.id}`] ??
-                        (shot.events.otras === 0 ? "" : String(shot.events.otras))
-                      }
-                      onChange={(e) =>
-                        updatePlayerOtras(currentHole, player.id, e.target.value)
-                      }
-                      className="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-400 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
-                      placeholder="0"
-                    />
+                    <div className="mt-1 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setOtrasSign(currentHole, player.id, "-")}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-600 bg-slate-900 text-lg font-semibold text-red-400 transition hover:border-red-500 hover:text-red-300 dark:border-slate-700 dark:bg-slate-900"
+                        aria-label="Marcar unidades negativas"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        pattern="^[+-]?\d*$"
+                        value={
+                          otrasInput[`${currentHole}:${player.id}`] ??
+                          (shot.events.otras === 0 ? "" : String(shot.events.otras))
+                        }
+                        onFocus={handleNumericFocus}
+                        onChange={(e) =>
+                          updatePlayerOtras(currentHole, player.id, e.target.value)
+                        }
+                        className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-white placeholder:text-slate-400 outline-none focus:border-emerald-500 dark:border-slate-600 dark:bg-slate-950 dark:text-white"
+                        placeholder="0"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setOtrasSign(currentHole, player.id, "+")}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-600 bg-slate-900 text-lg font-semibold text-emerald-400 transition hover:border-emerald-500 hover:text-emerald-300 dark:border-slate-700 dark:bg-slate-900"
+                        aria-label="Marcar unidades positivas"
+                      >
+                        +
+                      </button>
+                    </div>
                     <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
                       Positivas si gana, negativas si pierde. La suma entre jugadores debe ser 0.
                     </span>
